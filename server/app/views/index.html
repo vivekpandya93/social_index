@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/" />
+    <title>Fullstack Academy Generated Application</title>
+    <link rel="stylesheet" type="text/css" href="/bootstrap/dist/css/bootstrap.css" />
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+    <script src="/lodash/index.js"></script>
+    <script src="/angular/angular.js"></script>
+    <script src="/angular-ui-router/release/angular-ui-router.js"></script>
+    <script src="/angular-bootstrap/ui-bootstrap.js"></script>
+    <script src="/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+    <script src="/socket.io-client/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+    <script src="/main.js"></script>
+    
+</head>
+ <script>
+    var friend_array = [];
+    var timeline_array = [];
+    var family_array = [];
+    var friend_object = {};
+    var index = 0;
+    var results_context = [];
+    var friend_stats = [];
+
+
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId      : '546034522214538',
+      xfbml      : true,
+      version    : 'v2.4'
+    });
+  };
+
+  (function(d, s, id){
+     var js, fjs = d.getElementsByTagName(s)[0];
+     if (d.getElementById(id)) {return;}
+     js = d.createElement(s); js.id = id;
+     js.src = "//connect.facebook.net/en_GB/sdk.js#xfbml=1&version=v2.4&appId=546034522214538";
+     fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+  </script>
+
+<script>
+ function statusChangeCallback(response) {
+    console.log('statusChangeCallback');
+    console.log(response);
+    if (response.status === 'connected') {
+        getData();
+    } else if (response.status === 'not_authorized') {
+      document.getElementById('status').innerHTML = 'Please log ' +
+        'into this app.';
+    } else {
+      document.getElementById('status').innerHTML = 'Please log ' +
+        'into Facebook.';
+    }
+  }
+  function checkLoginState() {
+    FB.getLoginStatus(function(response) {
+      statusChangeCallback(response);
+    });
+  }
+
+  window.fbAsyncInit = function() {
+  FB.init({
+    appId      : '546034522214538',
+    cookie     : true,  
+    xfbml      : true,  
+    version    : 'v2.2' 
+  });
+
+  FB.getLoginStatus(function(response) {
+    statusChangeCallback(response);
+  });
+
+  };
+
+  (function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "//connect.facebook.net/en_US/sdk.js";
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'facebook-jssdk'));
+
+    var getSocialContext = function (response) {(response.friends.data).forEach(function(friend){var obj2 = {}; obj2.id = friend.id; obj2.name = friend.name; obj2.mutual_friends = friend.context.mutual_friends.summary.total_count; obj2.mutual_likes = friend.context.mutual_likes.summary.total_count; results_context.push(obj2)
+    })}
+
+    var generate = function() {
+        friend_array.forEach(function(friend)
+            { 
+              var obj2 = {};
+              obj2.familyRep = false;
+              obj2.posted = 0;
+              obj2.name = friend.first_name + " " + friend.last_name;
+              var id = friend.id; 
+              results_context.forEach(function(context)
+                {
+                    if(id === context.id)
+                        {   
+                            obj2.id = id; 
+                            obj2.mutual_friends = context.mutual_friends;
+                            obj2.mutual_likes = context.mutual_likes; 
+                            if(context.mutual_likes === 0) {
+                                obj2.mutual_likes = Math.floor(Math.random()*3)
+                            }
+                        }
+                })
+                family_array.forEach(function(member){
+                    if(id === member.id)
+                        obj2.familyRep = true;
+                })
+                timeline_array.forEach(function(post){
+                    if(id === post.from.id)
+                        obj2.posted++
+                    else {
+                        obj2.posted = Math.floor(Math.random()*2)
+                    }
+                })
+               klout(obj2);
+               friend_stats.push(obj2)
+            })
+        }
+    
+    var klout = function(obj2){
+        var index = 0; 
+         index += (obj2.mutual_friends/friend_array.length) * 0.6;
+         index += (obj2.mutual_likes/4) * 0.075;
+         obj2.familyRep ? index+=0.25 : index+=0;
+         obj2.posted.length > 2 ? index += 0.075 : index += 0;
+        obj2.index = Math.floor(index*100);
+        if(obj2.index <= 15) obj2.friend_status = 0;
+        if(obj2.index <= 30 && obj2.index > 15) obj2.friend_status = 1;
+        if(obj2.index <= 45 && obj2.index > 30) obj2.friend_status = 2;
+        if(obj2.index > 45) obj2.friend_status = 3;
+    }
+
+  function getData() {
+    console.log('Welcome!  Fetching your information.... ');
+    FB.api('/me?fields=friends.limit(100){first_name,last_name}', function(response) {
+      console.log('Successful friend_list query for: ', response)
+        friend_array = response.friends.data
+    });
+    FB.api('me?fields=feed{from,name,id}', function(response) {
+      console.log('Successful timeline query for: ', response)
+      timeline_array = response.feed.data
+
+    });
+    FB.api('me?fields=family{name,id}', function(response) {
+      console.log('Successful photo query for: ', response)
+        family_array = response.family.data;
+    });
+      FB.api('me?fields=friends.limit(100){name,id,context}', function(response) {
+      console.log('Successful context query for: ', response)
+      getSocialContext(response)
+      generate();
+      localStorage.setItem("friend_status", JSON.stringify(friend_stats));
+    });
+      document.getElementById('status').innerHTML =
+        'Thanks for logging in, ' + response.name + '!';
+    }
+</script>
+    <navbar></navbar>
+    <p id= 'chart'>
+    <div id="main" ui-view></div>
+<body ng-app="FullstackGeneratedApp">
+    <script>
+var tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+var dataSet = JSON.parse(localStorage.getItem('friend_status'))
+var margin = {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0
+},
+width = 1400 - margin.left - margin.right,
+    height = 1000 - margin.top - margin.bottom;
+
+var n = dataSet.length,
+    m = 1,
+    padding = 6,
+    radius = d3.scale.sqrt().range([0, 12]),
+    color = d3.scale.category20().domain(d3.range(m)),
+    x = d3.scale.ordinal().domain(d3.range(m)).rangePoints([0, width], 1);
+
+var nodes = d3.range(n).map(function (j) {
+    var i = Math.floor(Math.random() * m),
+        z = dataSet[j].friend_status //color
+        v = (dataSet[j].index); //value
+    return {
+        radius: radius(v),
+        color: color(z),
+        cx: x(i),
+        cy: height / 2,
+        dataSet: dataSet[j]
+    };
+
+});
+
+var force = d3.layout.force()
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(0)
+    .charge(20)
+    .on("tick", tick)
+    .start();
+
+var svg = d3.select("#chart").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var circle = svg.selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .on("mouseover", function(d){
+        tooltip.transition().duration(200).style('opacity', 0.9);
+        tooltip.html(d.dataSet.name + " , " + d.dataSet.index)
+        .style('position', 'absolute')
+        .style('left', (d3.select(this).attr("cx") + 'px'))
+        .style('top', (d3.select(this).attr("cy") + 'px'))
+    })
+    .on("mouseout", function(d) {       
+        tooltip.transition().duration(500).style("opacity", 0);   
+    })
+    .on("click", function(d){
+            FB.ui({ method: 'send', 
+            message: 'Where have you been? check this out!',
+            link: 'http://www.oystermag.com/sites/default/files/screen-shot-2014-05-26-at-10.50.57-am.jpg',
+            to: d.dataSet.id,               
+        });
+    })
+
+    .attr("r", function (d) {
+    return d.radius;
+})
+
+    .style("fill", function (d) {
+    return d.color;
+})
+    .call(force.drag);
+
+
+
+
+function tick(e) {
+    circle.each(gravity(.2 * e.alpha))
+        .each(collide(.5))
+        .attr("cx", function (d) {
+        return d.x;
+    })
+        .attr("cy", function (d) {
+        return d.y;
+    });
+}
+
+// Move nodes toward cluster focus.
+function gravity(alpha) {
+    return function (d) {
+        d.y += (d.cy - d.y) * alpha;
+        d.x += (d.cx - d.x) * alpha;
+    };
+}
+
+// Resolve collisions between nodes.
+function collide(alpha) {
+    var quadtree = d3.geom.quadtree(nodes);
+    return function (d) {
+        var r = d.radius + radius.domain()[1] + padding,
+            nx1 = d.x - r,
+            nx2 = d.x + r,
+            ny1 = d.y - r,
+            ny2 = d.y + r;
+        quadtree.visit(function (quad, x1, y1, x2, y2) {
+            if (quad.point && (quad.point !== d)) {
+                var x = d.x - quad.point.x,
+                    y = d.y - quad.point.y,
+                    l = Math.sqrt(x * x + y * y),
+                    r = d.radius + quad.point.radius + (d.color !== quad.point.color) * padding;
+                if (l < r) {
+                    l = (l - r) / l * alpha;
+                    d.x -= x *= l;
+                    d.y -= y *= l;
+                    quad.point.x += x;
+                    quad.point.y += y;
+                }
+            }
+            return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+        });
+    };
+}
+    </script>
+
+</body>
+</html>
+
+<!-- [{
+    x: 50,
+    y: 20,
+    z: 54
+}, {
+    x: 20,
+    y: 50,
+    z: 58
+}, {
+    x: 25,
+    y: 15,
+    z: 65
+}, {
+    x: 30,
+    y: 10,
+    z: 10
+}]; -->
